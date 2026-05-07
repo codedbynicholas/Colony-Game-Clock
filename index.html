@@ -25,17 +25,22 @@
             z-index: 100; width: 90vw; max-width: 800px; max-height: 90vh;
             overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .global-settings { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        @media (min-width: 600px) { .global-settings { grid-template-columns: repeat(3, 1fr); } }
+        .global-settings { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 600px) { .global-settings { grid-template-columns: repeat(2, 1fr); } }
         .setting-item { display: flex; flex-direction: column; }
+        label { font-size: 0.9rem; color: #bdc3c7; margin-bottom: 2px; }
         input, select { 
             width: 100%; padding: 12px; margin-top: 5px; 
             border-radius: 5px; border: none; font-size: 16px !important; 
-            box-sizing: border-box;
+            box-sizing: border-box; background: white; color: black;
         }
         .toggle-row { display: flex; align-items: center; justify-content: center; gap: 10px; background: #34495e; padding: 10px; border-radius: 10px; margin-top: 5px; }
         .toggle-row input { width: auto; margin: 0; }
-        .player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .section-title { 
+            text-align: center; font-weight: bold; 
+            font-size: 1.5rem; margin-top: 10px;
+        }
+        .player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
         .config-card { background: #34495e; padding: 10px; border-radius: 8px; text-align: center; }
         #game-screen { display: grid; width: 100vw; height: 100vh; display: none; }
         @media (orientation: landscape) { #game-screen { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; } }
@@ -75,12 +80,31 @@
     <div id="config-screen">
         <h2 style="text-align: center; margin: 0;">Tournament Setup</h2>
         <div class="global-settings">
-            <div class="setting-item"><label>Study (Min)</label><input type="number" id="cfg-study" value="5"></div>
-            <div class="setting-item"><label>Draft (Min)</label><input type="number" id="cfg-draft" value="2"></div>
-            <div class="setting-item"><label>P4 Bonus (Min)</label><input type="number" id="cfg-draft-p4" value="1.5"></div>
-            <div class="setting-item"><label>Robber (Sec)</label><input type="number" id="cfg-robber" value="30"></div>
-            <div class="setting-item" style="grid-column: span 2;">
-                <label>First Player</label>
+            <div class="setting-item"><label>Board Study Time (Min)</label><input type="number" id="cfg-study" value="5"></div>
+            <div class="setting-item"><label>Draft Phase Time - First 3 Picks (Min)</label><input type="number" id="cfg-draft" value="2"></div>
+            <div class="setting-item"><label>Draft Phase Time - Last Pick (Min)</label><input type="number" id="cfg-draft-p4" value="1.5"></div>
+            <div class="setting-item">
+                <label>Turn Length (Sec)</label>
+                <select id="cfg-turn-len">
+                    <option value="30">30 Seconds</option>
+                    <option value="45">45 Seconds</option>
+                    <option value="60" selected>1 Minute</option>
+                    <option value="90">1.5 Minutes</option>
+                    <option value="120">2 Minutes</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>Starting Time Bank (Min)</label>
+                <select id="cfg-bank-len">
+                    <option value="5">5 Minutes</option>
+                    <option value="10" selected>10 Minutes</option>
+                    <option value="15">15 Minutes</option>
+                    <option value="20">20 Minutes</option>
+                </select>
+            </div>
+            <div class="setting-item"><label>Robber Penalty (Sec)</label><input type="number" id="cfg-robber" value="30"></div>
+            <div class="setting-item">
+                <label>First Player Position</label>
                 <select id="cfg-first-player">
                     <option value="0">Top Left</option>
                     <option value="1">Top Right</option>
@@ -93,6 +117,9 @@
             <input type="checkbox" id="cfg-click-sound" checked>
             <label for="cfg-click-sound">Enable Pass Turn "Ding"</label>
         </div>
+        
+        <div class="section-title">Player Location</div>
+        
         <div class="player-grid">
             <div class="config-card"><label>Top Left</label><input type="text" id="n0" placeholder="Name"><select id="c0" onchange="handleColorChange(0)"></select></div>
             <div class="config-card"><label>Top Right</label><input type="text" id="n1" placeholder="Name"><select id="c1" onchange="handleColorChange(1)"></select></div>
@@ -121,6 +148,7 @@
         ];
 
         let players = [], phase = 'STUDY', studySeconds = 0, robberSeconds = 0, robberLimit = 30, useClickSound = true;
+        let turnLimit = 60, bankLimit = 600;
         let draftSequence = [], mainSequence = [], seqIndex = 0;
         let timerTick = null, isPaused = false, isRobber = false, history = null, lastClickTime = 0;
         let currentSelections = [0, 1, 2, 3];
@@ -150,7 +178,7 @@
         const beep = (freq, vol = 0.05) => { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = freq; gain.gain.value = vol; osc.start(); osc.stop(ctx.currentTime + 0.1); } catch(e) {} };
 
         function saveGameState() {
-            const state = { players, phase, studySeconds, robberSeconds, robberLimit, useClickSound, draftSequence, mainSequence, seqIndex, isRobber, currentSelections };
+            const state = { players, phase, studySeconds, robberSeconds, robberLimit, useClickSound, draftSequence, mainSequence, seqIndex, isRobber, currentSelections, turnLimit, bankLimit };
             localStorage.setItem('blitz_game_state', JSON.stringify(state));
         }
 
@@ -163,6 +191,7 @@
             useClickSound = state.useClickSound; draftSequence = state.draftSequence;
             mainSequence = state.mainSequence; seqIndex = state.seqIndex; 
             isRobber = state.isRobber; currentSelections = state.currentSelections;
+            turnLimit = state.turnLimit || 60; bankLimit = state.bankLimit || 600;
             
             players.forEach((p, i) => {
                 let q = document.getElementById(`q${i}`);
@@ -177,23 +206,18 @@
             if (isRobber) document.getElementById('robber-btn').innerText = "RESUME";
             if (phase === 'MAIN') document.getElementById('robber-btn').style.display = 'block';
             
-            startTimer();
-            updateUI();
-            return true;
+            startTimer(); updateUI(); return true;
         }
 
         async function initGame() {
             beep(440, 0); 
             try { if ('wakeLock' in navigator) { await navigator.wakeLock.request('screen'); } } catch (err) {}
-            try {
-                const doc = document.documentElement;
-                if (doc.requestFullscreen) { await doc.requestFullscreen(); } 
-                else if (doc.webkitRequestFullscreen) { await doc.webkitRequestFullscreen(); }
-            } catch (err) {}
-
+            
             robberLimit = parseInt(document.getElementById('cfg-robber').value) || 30;
             studySeconds = (parseFloat(document.getElementById('cfg-study').value) || 5) * 60;
             useClickSound = document.getElementById('cfg-click-sound').checked;
+            turnLimit = parseInt(document.getElementById('cfg-turn-len').value);
+            bankLimit = parseInt(document.getElementById('cfg-bank-len').value) * 60;
             
             const startIdx = parseInt(document.getElementById('cfg-first-player').value);
             const clockwiseOrder = [0, 1, 3, 2];
@@ -206,7 +230,8 @@
                 const colorObj = COLORS[currentSelections[i]];
                 players[i] = { 
                     id: i, name: document.getElementById(`n${i}`).value || `P${i+1}`, color: colorObj.value, 
-                    bank: 600, turn: 60, dNorm: (parseFloat(document.getElementById('cfg-draft').value) || 2) * 60, 
+                    bank: bankLimit, turn: turnLimit, 
+                    dNorm: (parseFloat(document.getElementById('cfg-draft').value) || 2) * 60, 
                     dP4: (parseFloat(document.getElementById('cfg-draft-p4').value) || 1.5) * 60 
                 };
                 let q = document.getElementById(`q${i}`);
@@ -218,7 +243,7 @@
             document.getElementById('game-screen').style.display = 'grid';
             document.getElementById('menu-btn').style.display = 'flex';
             saveGameState();
-            showBanner("STUDY PHASE"); startTimer(); updateUI();
+            showBanner("BOARD STUDY PHASE"); startTimer(); updateUI();
         }
 
         function nextTurn() {
@@ -228,19 +253,12 @@
             if (useClickSound) beep(1200, 0.1);
             if (phase === 'STUDY') { phase = 'DRAFT'; seqIndex = 0; showBanner("DRAFT PHASE"); }
             else if (phase === 'DRAFT') { seqIndex++; if (seqIndex >= draftSequence.length) { phase = 'MAIN'; seqIndex = 0; showBanner("MAIN GAME"); document.getElementById('robber-btn').style.display = 'block'; } }
-            else { players[mainSequence[seqIndex]].turn = 60; seqIndex = (seqIndex + 1) % 4; }
-            saveGameState();
-            updateUI();
+            else { players[mainSequence[seqIndex]].turn = turnLimit; seqIndex = (seqIndex + 1) % 4; }
+            saveGameState(); updateUI();
         }
 
-        window.addEventListener('keydown', (e) => {
-            if (isPaused) return;
-            const remoteKeys = ['Enter', ' ', 'ArrowUp', 'VolumeUp'];
-            if (remoteKeys.includes(e.key) || remoteKeys.includes(e.code)) { e.preventDefault(); nextTurn(); }
-        });
-
         function undoLastAction() { if (!history) return; phase = history.phase; seqIndex = history.seqIndex; studySeconds = history.studySeconds; players = history.players; isRobber = false; document.getElementById('robber-btn').style.display = (phase === 'MAIN') ? 'block' : 'none'; toggleMenu(); updateUI(); saveGameState(); }
-        function toggleMenu() { isPaused = !isPaused; document.getElementById('modal-overlay').style.display = isPaused ? 'flex' : 'none'; if (isPaused) { clearInterval(timerTick); document.getElementById('setup-display').innerText = `Study: ${format(studySeconds)} | Robber: ${robberLimit}s`; } else startTimer(); }
+        function toggleMenu() { isPaused = !isPaused; document.getElementById('modal-overlay').style.display = isPaused ? 'flex' : 'none'; if (isPaused) { clearInterval(timerTick); document.getElementById('setup-display').innerText = `Turn: ${turnLimit}s | Bank: ${bankLimit/60}m`; } else startTimer(); }
         function triggerRobber() { if (isRobber) { isRobber = false; document.getElementById('robber-btn').innerText = "ROBBER"; } else { history = { phase, seqIndex, studySeconds, players: JSON.parse(JSON.stringify(players)) }; isRobber = true; robberSeconds = robberLimit; document.getElementById('robber-btn').innerText = "RESUME"; beep(440); } saveGameState(); }
         function startTimer() { if (timerTick) clearInterval(timerTick); timerTick = setInterval(tick, 1000); }
         function tick() {
@@ -248,8 +266,7 @@
             else if (phase === 'STUDY') { studySeconds--; if (studySeconds <= 0) nextTurn(); }
             else if (phase === 'DRAFT') { const p = players[draftSequence[seqIndex]]; if (seqIndex === 3 || seqIndex === 4) p.dP4--; else p.dNorm--; if (p.dNorm <= 0 && p.dP4 <= 0) nextTurn(); }
             else { const p = players[mainSequence[seqIndex]]; if (p.turn > 0) p.turn--; else if (p.bank > 0) p.bank--; if (p.turn <= 10 && p.turn > 0) beep(800); if (p.turn <= 0 && p.bank <= 0) nextTurn(); }
-            saveGameState();
-            updateUI();
+            saveGameState(); updateUI();
         }
         function updateUI() {
             let activeId = (phase === 'STUDY' || isRobber) ? null : (phase === 'DRAFT' ? draftSequence[seqIndex] : mainSequence[seqIndex]);
@@ -258,7 +275,7 @@
                 if (i === activeId && phase === 'MAIN' && p.turn <= 10) card.classList.add('urgent'); else card.classList.remove('urgent');
                 const bt = document.getElementById(`bt${i}`), tt = document.getElementById(`tt${i}`);
                 if (isRobber) { bt.innerText = format(robberSeconds); tt.innerText = "ROBBER"; }
-                else if (phase === 'STUDY') { bt.innerText = format(studySeconds); tt.innerText = "STUDY"; }
+                else if (phase === 'STUDY') { bt.innerText = format(studySeconds); tt.innerText = "BOARD STUDY"; }
                 else if (phase === 'DRAFT') { const isP4 = (seqIndex === 3 || seqIndex === 4); bt.innerText = format(isP4 ? p.dP4 : p.dNorm); tt.innerText = "DRAFT"; }
                 else { bt.innerText = format(p.bank); tt.innerText = format(p.turn); }
             });
@@ -269,6 +286,7 @@
 
         setupColorMenus();
         window.onload = () => { loadGameState(); };
+        window.addEventListener('keydown', (e) => { if (!isPaused && ['Enter', ' ', 'ArrowUp'].includes(e.key)) { e.preventDefault(); nextTurn(); } });
     </script>
 </body>
 </html>
