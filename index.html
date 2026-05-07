@@ -1,5 +1,5 @@
 <!-- Copyright © 2026 Nicholas Sanders. All Rights Reserved. -->
-<!-- Version 6.3 -->
+<!-- Version 6.5 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -114,6 +114,7 @@
             <input type="checkbox" id="cfg-click-sound" checked>
             <label for="cfg-click-sound">Enable Pass Turn "Ding"</label>
         </div>
+        
         <div class="section-title">Player Location</div>
         <div class="player-grid">
             <div class="config-card"><label>Top Left</label><input type="text" id="n0" placeholder="Name"><select id="c0" onchange="handleColorChange(0)"></select></div>
@@ -132,7 +133,14 @@
     </div>
     <script>
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-        const COLORS = [{ name: 'White', value: 'var(--white)' }, { name: 'Red', value: 'var(--red)' }, { name: 'Blue', value: 'var(--blue)' }, { name: 'Orange', value: 'var(--orange)' }, { name: 'Green', value: 'var(--green)' }, { name: 'Brown', value: 'var(--brown)' }];
+        const COLORS = [
+            { name: 'White', value: 'var(--white)' },
+            { name: 'Red', value: 'var(--red)' },
+            { name: 'Blue', value: 'var(--blue)' },
+            { name: 'Orange', value: 'var(--orange)' },
+            { name: 'Green', value: 'var(--green)' },
+            { name: 'Brown', value: 'var(--brown)' }
+        ];
         let players = [], phase = 'STUDY', studySeconds = 0, robberSeconds = 0, robberLimit = 30, useClickSound = true, turnLimit = 60, bankLimit = 600, draftSequence = [], mainSequence = [], seqIndex = 0, timerTick = null, isPaused = false, isRobber = false, history = null, lastClickTime = 0, currentSelections = [0, 1, 2, 3];
 
         function setupColorMenus() { for(let i=0; i<4; i++) { const sel = document.getElementById(`c${i}`); if (sel) { sel.innerHTML = COLORS.map((c, idx) => `<option value="${idx}">${c.name}</option>`).join(''); sel.value = currentSelections[i]; } } }
