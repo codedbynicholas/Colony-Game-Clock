@@ -1,5 +1,5 @@
 <!-- Copyright © 2026 Nicholas Sanders. All Rights Reserved. -->
-<!-- Version 6.8 -->
+<!-- Version 7.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,7 +36,21 @@
             border-radius: 5px; border: none; font-size: 16px !important; 
             box-sizing: border-box; background: white; color: black;
         }
-        .toggle-row { display: flex; align-items: center; justify-content: center; gap: 10px; background: #34495e; padding: 10px; border-radius: 10px; margin-top: 5px; }
+        /* Fixed Toggle Alignment */
+        .toggle-row { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            background: #34495e; 
+            padding: 12px 20px; 
+            border-radius: 10px; 
+            margin: 10px auto;
+            width: fit-content; /* Keeps it tight around the content */
+        }
+        .toggle-row input { width: auto; margin: 0; }
+        .toggle-row label { margin: 0; color: white; cursor: pointer; }
+
         .section-title { text-align: center; font-weight: bold; font-size: 1.5rem; margin-top: 10px; color: white; }
         .player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
         .config-card { background: #34495e; padding: 10px; border-radius: 8px; text-align: center; }
@@ -81,25 +95,11 @@
             <div class="setting-item"><label>Board Study Time (Min)</label><input type="number" id="cfg-study" value="5"></div>
             <div class="setting-item"><label>Draft Phase Time - First 3 Picks (Min)</label><input type="number" id="cfg-draft" value="2"></div>
             <div class="setting-item"><label>Draft Phase Time - Last Pick (Min)</label><input type="number" id="cfg-draft-p4" value="1.5"></div>
-            <div class="setting-item">
-                <label>Turn Length (Sec)</label>
-                <select id="cfg-turn-len">
-                    <option value="30">Bullet (30s)</option>
-                    <option value="45">Fast (45s)</option>
-                    <option value="60" selected>Blitz (60s)</option>
-                    <option value="90">Rapid (90s)</option>
-                    <option value="120">Standard (120s)</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <label>Starting Time Bank (Min)</label>
-                <select id="cfg-bank-len">
-                    <option value="5">Total Bank: 5 Min</option>
-                    <option value="10" selected>Total Bank: 10 Min</option>
-                    <option value="15">Total Bank: 15 Min</option>
-                    <option value="20">Total Bank: 20 Min</option>
-                </select>
-            </div>
+            
+            <!-- Converted Selects to Number Inputs -->
+            <div class="setting-item"><label>Turn Length (Sec)</label><input type="number" id="cfg-turn-len" value="60"></div>
+            <div class="setting-item"><label>Starting Time Bank (Min)</label><input type="number" id="cfg-bank-len" value="10"></div>
+            
             <div class="setting-item"><label>Robber Penalty (Sec)</label><input type="number" id="cfg-robber" value="30"></div>
             <div class="setting-item">
                 <label>First Player Position</label>
@@ -181,7 +181,7 @@
                 let q = document.getElementById(`q${i}`); 
                 q.style.backgroundColor = p.color; 
                 const cName = COLORS[currentSelections[i]]?.name || "";
-                q.style.color = (p.color.includes('white') || cName === 'Yellow') ? '#1a1a1a' : 'white'; 
+                q.style.color = (cName === 'White' || cName === 'Yellow') ? '#1a1a1a' : 'white'; 
                 document.getElementById(`dn${i}`).innerText = p.name; 
             }); 
             document.getElementById('config-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'grid'; document.getElementById('menu-btn').style.display = 'flex'; 
@@ -227,7 +227,6 @@
         function showBanner(text) { const b = document.getElementById('phase-banner'); b.innerText = text; b.style.display = 'block'; if (phase === 'MAIN') setTimeout(() => b.style.display = 'none', 3000); }
         function returnToMenu() { if (confirm("Exit?")) { localStorage.removeItem('blitz_game_state'); location.reload(); } }
         
-        // Final Init Sequence
         setupColorMenus(); 
         window.onload = () => { if(!loadGameState()) setupColorMenus(); };
         window.addEventListener('keydown', (e) => { if (!isPaused && ['Enter', ' ', 'ArrowUp'].includes(e.key)) { e.preventDefault(); nextTurn(); } });
